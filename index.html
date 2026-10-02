@@ -1,0 +1,1613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ABH Training Matrix — REG-016</title>
+<style>
+  :root {
+    --navy: #1B2A4A;
+    --red: #C0392B;
+    --amber: #E67E22;
+    --green: #27AE60;
+    --blue: #0E7CCE;
+    --ltgrey: #F5F5F5;
+    --mdgrey: #CCCCCC;
+    --dktext: #333333;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; font-size: 13px; color: var(--dktext); background: #f0f2f5; }
+
+  /* Header */
+  .header { background: var(--navy); color: white; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; }
+  .header-title { font-size: 18px; font-weight: bold; }
+  .header-sub { font-size: 11px; opacity: 0.75; margin-top: 2px; }
+  .header-logo { font-size: 11px; opacity: 0.7; text-align: right; }
+
+  /* Nav tabs */
+  .tabs { background: #1a2847; display: flex; gap: 0; border-bottom: 2px solid var(--blue); }
+  .tab { padding: 10px 20px; cursor: pointer; color: rgba(255,255,255,0.65); font-size: 12px; font-weight: 600; letter-spacing: 0.3px; border-right: 1px solid rgba(255,255,255,0.1); transition: all 0.15s; }
+  .tab:hover { color: white; background: rgba(255,255,255,0.08); }
+  .tab.active { color: white; background: var(--blue); }
+
+  /* Toolbar */
+  .toolbar { background: white; padding: 10px 16px; border-bottom: 1px solid var(--mdgrey); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .toolbar select, .toolbar input { padding: 5px 10px; border: 1px solid var(--mdgrey); border-radius: 4px; font-size: 12px; font-family: Arial, sans-serif; }
+  .toolbar .btn { padding: 6px 14px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-family: Arial, sans-serif; font-weight: 600; }
+  .btn-primary { background: var(--navy); color: white; }
+  .btn-primary:hover { background: #253d6e; }
+  .btn-green { background: var(--green); color: white; }
+  .btn-green:hover { background: #219a52; }
+  .btn-export { background: #fff; color: var(--navy); border: 1px solid var(--navy) !important; }
+  .toolbar-label { font-size: 11px; font-weight: 600; color: #666; white-space: nowrap; }
+
+  /* KPI bar */
+  .kpi-bar { background: white; padding: 8px 16px; border-bottom: 1px solid var(--mdgrey); display: flex; gap: 16px; flex-wrap: wrap; }
+  .kpi { display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 4px; font-size: 11px; }
+  .kpi-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .kpi-dot.green { background: var(--green); }
+  .kpi-dot.amber { background: var(--amber); }
+  .kpi-dot.red { background: var(--red); }
+  .kpi-dot.none { background: #ddd; }
+  .kpi strong { font-weight: 700; }
+
+  /* Matrix */
+  .matrix-container { overflow: auto; max-height: calc(100vh - 180px); }
+  table.matrix { border-collapse: collapse; min-width: 100%; font-size: 11px; }
+  table.matrix th { background: var(--navy); color: white; padding: 6px 4px; white-space: nowrap; position: sticky; top: 0; z-index: 10; font-weight: 600; font-size: 10px; text-align: center; border: 1px solid rgba(255,255,255,0.15); }
+  table.matrix th.cat-header { background: #253d6e; font-size: 9px; letter-spacing: 0.5px; text-transform: uppercase; }
+  table.matrix td.staff-name { position: sticky; left: 0; z-index: 5; background: white; font-weight: 600; white-space: nowrap; padding: 4px 8px; border-right: 2px solid var(--navy); border-bottom: 1px solid #eee; min-width: 140px; }
+  table.matrix td.staff-meta { background: #f8f9fc; padding: 4px 6px; white-space: nowrap; border-bottom: 1px solid #eee; font-size: 10px; color: #666; }
+  table.matrix tbody tr:hover td { background: #f0f4ff !important; }
+  table.matrix td.cell { text-align: center; padding: 3px 2px; border: 1px solid #e8e8e8; cursor: pointer; min-width: 52px; max-width: 52px; transition: background 0.1s; }
+  table.matrix td.cell:hover { outline: 2px solid var(--blue); outline-offset: -2px; }
+
+  /* Cell status badges */
+  .cell-status { display: inline-block; width: 44px; padding: 2px 0; border-radius: 3px; font-size: 9px; font-weight: 700; letter-spacing: 0.3px; text-align: center; }
+  .cs-green { background: #d4edda; color: #155724; }
+  .cs-amber { background: #fff3cd; color: #7d4e00; }
+  .cs-red { background: #f8d7da; color: #721c24; }
+  .cs-expired { background: #f8d7da; color: #721c24; border: 1px dashed var(--red); }
+  .cs-none { background: #f0f0f0; color: #aaa; }
+  .cs-na { background: transparent; color: #ccc; font-size: 9px; }
+
+  /* Staff list view */
+  #view-staff { display: none; padding: 16px; }
+  table.staff-table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 1px 4px rgba(0,0,0,0.08); border-radius: 6px; overflow: hidden; }
+  table.staff-table th { background: var(--navy); color: white; padding: 8px 12px; text-align: left; font-size: 12px; }
+  table.staff-table td { padding: 6px 12px; border-bottom: 1px solid #eee; font-size: 12px; }
+  table.staff-table tr:hover td { background: var(--ltgrey); }
+  .emp-badge { display: inline-block; padding: 1px 6px; border-radius: 10px; font-size: 10px; font-weight: 700; }
+  .emp-abh { background: #d4edda; color: #155724; }
+  .emp-temp { background: #fff3cd; color: #7d4e00; }
+  .emp-agency { background: #f8d7da; color: #721c24; }
+
+  /* Training types view */
+  #view-types { display: none; padding: 16px; }
+  .type-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+  .type-card { background: white; border-radius: 6px; padding: 12px 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); border-left: 4px solid var(--navy); }
+  .type-card.cat-Machine\ Operator { border-left-color: var(--blue); }
+  .type-card.cat-Licence { border-left-color: var(--amber); }
+  .type-card .tc-name { font-weight: 700; font-size: 13px; margin-bottom: 4px; }
+  .type-card .tc-cat { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #888; margin-bottom: 6px; }
+  .type-card .tc-expiry { font-size: 12px; }
+  .mandatory-badge { display: inline-block; padding: 1px 5px; border-radius: 3px; font-size: 9px; font-weight: 700; background: #f8d7da; color: #721c24; margin-left: 6px; }
+
+  /* Modal */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: white; border-radius: 8px; padding: 24px; min-width: 380px; max-width: 500px; box-shadow: 0 8px 32px rgba(0,0,0,0.25); }
+  .modal h3 { font-size: 15px; font-weight: 700; color: var(--navy); margin-bottom: 16px; border-bottom: 2px solid var(--blue); padding-bottom: 8px; }
+  .modal label { display: block; font-size: 12px; font-weight: 600; color: #444; margin-bottom: 4px; margin-top: 12px; }
+  .modal input, .modal select, .modal textarea { width: 100%; padding: 7px 10px; border: 1px solid var(--mdgrey); border-radius: 4px; font-size: 12px; font-family: Arial, sans-serif; }
+  .modal-buttons { margin-top: 20px; display: flex; gap: 8px; justify-content: flex-end; }
+  .modal-info { font-size: 11px; color: #666; margin-top: 6px; }
+
+  /* Gaps view */
+  #view-gaps { display: none; padding: 16px; }
+  .gap-section { background: white; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); margin-bottom: 16px; overflow: hidden; }
+  .gap-section h3 { background: var(--navy); color: white; padding: 8px 14px; font-size: 13px; }
+  .gap-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .gap-table th { padding: 6px 12px; background: var(--ltgrey); text-align: left; font-size: 11px; border-bottom: 1px solid var(--mdgrey); }
+  .gap-table td { padding: 5px 12px; border-bottom: 1px solid #eee; }
+
+  /* Footer */
+  .footer { background: var(--navy); color: rgba(255,255,255,0.5); font-size: 9px; padding: 6px 16px; text-align: center; position: fixed; bottom: 0; left: 0; right: 0; }
+  #view-matrix { }
+
+  /* Add temp staff form */
+  #view-add { display: none; padding: 16px; }
+  .form-card { background: white; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); padding: 20px; max-width: 600px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .form-row.full { grid-template-columns: 1fr; }
+  .form-card label { display: block; font-size: 12px; font-weight: 600; color: #444; margin-bottom: 3px; }
+  .form-card input, .form-card select { width: 100%; padding: 7px 10px; border: 1px solid var(--mdgrey); border-radius: 4px; font-size: 12px; font-family: Arial, sans-serif; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header-title">REG-016 Employee Training Matrix</div>
+    <div class="header-sub">ABH Noble Beverages &mdash; Erskine Park &nbsp;|&nbsp; WFR-integrated &nbsp;|&nbsp; Version 1.0 DRAFT &nbsp;|&nbsp; 02/10/2026</div>
+  </div>
+  <div class="header-logo">Australian Beverage Holdings<br>INTERNAL &mdash; NOT FOR DISTRIBUTION</div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="showView('matrix')">Training Matrix</div>
+  <div class="tab" onclick="showView('gaps')">Gaps &amp; Alerts</div>
+  <div class="tab" onclick="showView('staff')">Staff Directory</div>
+  <div class="tab" onclick="showView('types')">Training Types</div>
+  <div class="tab" onclick="showView('add')">Add Temp Staff</div>
+</div>
+
+<!-- TOOLBAR -->
+<div class="toolbar">
+  <span class="toolbar-label">Filter:</span>
+  <select id="filter-area" onchange="applyFilters()">
+    <option value="">All Areas</option>
+    <option value="Production">Production</option>
+    <option value="Warehouse">Warehouse</option>
+    <option value="Quality">Quality</option>
+    <option value="Administration">Administration</option>
+    <option value="Maintenance">Maintenance</option>
+  </select>
+  <select id="filter-shift" onchange="applyFilters()">
+    <option value="">All Shifts</option>
+    <option value="Day">Day Shift</option>
+    <option value="Afternoon">Afternoon Shift</option>
+  </select>
+  <select id="filter-employer" onchange="applyFilters()">
+    <option value="">All Employers</option>
+    <option value="ABH">ABH</option>
+    <option value="Agency/Temp">Agency / Temp</option>
+  </select>
+  <select id="filter-cat" onchange="applyFilters()">
+    <option value="">All Categories</option>
+    <option value="Compliance">Compliance</option>
+    <option value="Machine Operator">Machine Operator</option>
+    <option value="Licence">Licences</option>
+  </select>
+  <input type="text" id="filter-search" placeholder="Search name..." oninput="applyFilters()" style="width:150px">
+  <button class="btn btn-export" onclick="exportCSV()">Export CSV</button>
+  <button class="btn btn-primary" onclick="exportPrint()">Print View</button>
+</div>
+
+<!-- KPI BAR -->
+<div class="kpi-bar" id="kpi-bar">
+  <div class="kpi"><div class="kpi-dot green"></div><strong id="kpi-current">--</strong>&nbsp;Current</div>
+  <div class="kpi"><div class="kpi-dot amber"></div><strong id="kpi-due">--</strong>&nbsp;Due within 90 days</div>
+  <div class="kpi"><div class="kpi-dot red"></div><strong id="kpi-expired">--</strong>&nbsp;Expired</div>
+  <div class="kpi"><div class="kpi-dot none"></div><strong id="kpi-missing">--</strong>&nbsp;Not recorded</div>
+  <div class="kpi" style="margin-left:auto;font-size:11px;color:#666;">Last updated: 02/10/2026 &nbsp;|&nbsp; <span id="kpi-staff">--</span> staff shown</div>
+</div>
+
+<!-- MATRIX VIEW -->
+<div id="view-matrix">
+  <div class="matrix-container">
+    <table class="matrix" id="matrix-table">
+      <thead id="matrix-head"></thead>
+      <tbody id="matrix-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- GAPS VIEW -->
+<div id="view-gaps">
+  <div class="gap-section">
+    <h3>Expired Training (immediate action required)</h3>
+    <table class="gap-table"><thead><tr><th>Staff Member</th><th>Training</th><th>Completed</th><th>Expired</th><th>Days Overdue</th></tr></thead>
+    <tbody id="gaps-expired"></tbody></table>
+  </div>
+  <div class="gap-section">
+    <h3>Due for Renewal within 90 days</h3>
+    <table class="gap-table"><thead><tr><th>Staff Member</th><th>Training</th><th>Completed</th><th>Expires</th><th>Days Remaining</th></tr></thead>
+    <tbody id="gaps-due"></tbody></table>
+  </div>
+  <div class="gap-section">
+    <h3>Mandatory Training Not Recorded</h3>
+    <table class="gap-table"><thead><tr><th>Staff Member</th><th>Area</th><th>Missing Training</th></tr></thead>
+    <tbody id="gaps-missing"></tbody></table>
+  </div>
+</div>
+
+<!-- STAFF VIEW -->
+<div id="view-staff">
+  <table class="staff-table">
+    <thead><tr><th>Name</th><th>Shift</th><th>Area</th><th>Employer</th><th>Start Date</th><th>Type</th><th>Trainings Completed</th><th>Gaps</th></tr></thead>
+    <tbody id="staff-body"></tbody>
+  </table>
+</div>
+
+<!-- TRAINING TYPES VIEW -->
+<div id="view-types">
+  <div class="type-cards" id="types-grid"></div>
+</div>
+
+<!-- ADD TEMP STAFF -->
+<div id="view-add">
+  <div class="form-card">
+    <h3 style="font-size:15px;font-weight:700;color:var(--navy);margin-bottom:16px;">Add Temporary Staff Member</h3>
+    <p style="font-size:12px;color:#666;margin-bottom:16px;">ABH permanent staff are automatically loaded from WFR. Use this form to add temp/agency staff.</p>
+    <div class="form-row">
+      <div><label>First Name *</label><input id="add-first" placeholder="e.g. John"></div>
+      <div><label>Last Name *</label><input id="add-last" placeholder="e.g. Smith"></div>
+    </div>
+    <div class="form-row">
+      <div><label>Shift</label><select id="add-shift"><option value="Day">Day</option><option value="Afternoon">Afternoon</option></select></div>
+      <div><label>Area</label><select id="add-area"><option>Production</option><option>Warehouse</option><option>Quality</option><option>Administration</option><option>Maintenance</option></select></div>
+    </div>
+    <div class="form-row">
+      <div><label>Agency / Employer *</label><input id="add-employer" placeholder="e.g. Hoban"></div>
+      <div><label>Start Date</label><input id="add-start" type="date"></div>
+    </div>
+    <div class="form-row full">
+      <div><label>Notes</label><input id="add-notes" placeholder="Optional"></div>
+    </div>
+    <div style="margin-top:16px;">
+      <button class="btn btn-green" onclick="addTempStaff()">Add Staff Member</button>
+    </div>
+    <p class="modal-info" style="margin-top:12px;">Tip: Permanent ABH staff added in WFR will automatically appear on the matrix within 24 hours.</p>
+  </div>
+</div>
+
+<!-- MODAL for recording training -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h3 id="modal-title">Record Training</h3>
+    <div id="modal-body">
+      <label>Staff Member</label>
+      <input id="modal-staff" readonly style="background:#f5f5f5">
+      <label>Training</label>
+      <input id="modal-training" readonly style="background:#f5f5f5">
+      <label>Date Completed *</label>
+      <input id="modal-date" type="date">
+      <label>Expiry Date</label>
+      <input id="modal-expiry" type="date">
+      <label>Document / Certificate URL</label>
+      <input id="modal-docurl" type="url" placeholder="OneDrive link to certificate...">
+      <label>Notes</label>
+      <input id="modal-notes" placeholder="Optional">
+      <p class="modal-info" id="modal-expiry-hint"></p>
+    </div>
+    <div class="modal-buttons">
+      <button class="btn" style="background:#eee;color:#333" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-green" onclick="saveTraining()">Save Record</button>
+    </div>
+  </div>
+</div>
+
+<div class="footer">ABH Noble Beverages &mdash; REG-016 Training Matrix &nbsp;|&nbsp; INTERNAL &mdash; NOT FOR DISTRIBUTION &nbsp;|&nbsp; Generated: 02/10/2026</div>
+
+<script>
+// ─── Data ────────────────────────────────────────────────────────────────────
+const STAFF_DATA = [
+  {
+    "id": "s001",
+    "first": "Aaron",
+    "last": "Mattin",
+    "shift": "Day",
+    "area": "Administration",
+    "employer": "ABH",
+    "start": "2026-03-17",
+    "type": "perm"
+  },
+  {
+    "id": "s002",
+    "first": "Adi",
+    "last": "Taga",
+    "shift": "Day",
+    "area": "Production",
+    "employer": "ABH",
+    "start": "",
+    "type": "perm"
+  },
+  {
+    "id": "s003",
+    "first": "Afram",
+    "last": "Bedi",
+    "shift": "Day",
+    "area": "Production",
+    "employer": "Hoban",
+    "start": "2026-09-25",
+    "type": "temp"
+  },
+  {
+    "id": "s004",
+    "first": "Anthony",
+    "last": "Rose",
+    "shift": "Day",
+    "area": "Warehouse",
+    "employer": "ABH",
+    "start": "2000-12-01",
+    "type": "perm"
+  },
+  {
+    "id": "s005",
+    "first": "Antonia",
+    "last": "Peterson",
+    "shift": "Day",
+    "area": "Production",
+    "employer": "ABH",
+    "start": "2026-09-16",
+    "type": "perm"
+  },
+  {
+    "id": "s006",
+    "first": "Arieta",
+    "last": "Afa",
+    "shift": "Afternoon",
+    "area": "Production",
+    "employer": "ABH",
+    "start": "2025-12-20",
+    "type": "perm"
+  },
+  {
+    "id": "s007",
+    "first": "Benjamin",
+    "last": "Ledwith",
+    "shift": "Afternoon",
+    "area": "Warehouse",
+    "employer": "Hoban",
+    "start": "2026-08-01",
+    "type": "temp"
+  },
+  {
+    "id": "s008",
+    "first": "Caine",
+    "last": "Bowers",
+    "shift": "Day",
+    "area": "Warehouse",
+    "employer": "ABH",
+    "start": "2020-11-10",
+    "type": "perm"
+  },
+  {
+    "id": "s009",
+    "first": "David",
+    "last": "Borg",
+    "shift": "Afternoon",
+    "area": "Production",
+    "employer": "Hoban",
+    "start": "2026-07-01",
+    "type": "temp"
+  },
+  {
+    "id": "s010",
+    "first": "Deng",
+    "last": "Arob",
+    "shift": "Day",
+    "area": "Production",
+    "employer": "Agency",
+    "start": "2026-09-13",
+    "type": "temp"
+  },
+  {
+    "id": "s011",
+    "first": "Dylan",
+    "last": "Samuel",
+    "shift": "Day",
+    "area": "Maintenance",
+    "employer": "ABH",
+    "start": "2026-09-29",
+    "type": "perm"
+  },
+  {
+    "id": "s012",
+    "first": "Euta",
+    "last": "Toomalatai",
+    "shift": "Afternoon",
+    "area": "Production",
+    "employer": "ABH",
+    "start": "2026-09-17",
+    "type": "perm"
+  },
+  {
+    "id": "s013",
+    "first": "Fasi",
+    "last": "Pafitimai",
+    "shift": "Afternoon",
+    "area": "Production",
+    "employer": "ABH",
+    "start": "2025-12-01",
+    "type": "perm"
+  },
+  {
+    "id": "s014",
+    "first": "Fetui",
+    "last": "Seiuli",
+    "shift": "Day",
+    "area": "Warehouse",
+    "employer": "ABH",
+    "start": "2026-02-06",
+    "type": "perm"
+  },
+  {
+    "id": "s015",
+    "first": "Jasmine",
+    "last": "Pereira",
+    "shift": "Day",
+    "area": "Quality",
+    "employer": "ABH",
+    "start": "2025-09-15",
+    "type": "perm"
+  },
+  {
+    "id": "s016",
+    "first": "Javier",
+    "last": "Hernandez",
+    "shift": "Day",
+    "area": "Production",
+    "employer": "ABH",
+    "start": "2025-04-08",
+    "type": "perm"
+  },
+  {
+    "id": "s017",
+    "first": "Jay",
+    "last": "Curds",
+    "shift": "Afternoon",
+    "area": "Warehouse",
+    "employer": "ABH",
+    "start": "2013-01-01",
+    "type": "perm"
+  },
+  {
+    "id": "s018",
+    "first": "Jayden",
+    "last": "Hawkins",
+    "shift": "Day",
+    "area": "Production",
+    "employer": "Hoban",
+    "start": "2026-07-04",
+    "type": "temp"
+  },
+  {
+    "id": "s019",
+    "first": "Jeremy",
+    "last": "Wheeler",
+    "shift": "Day",
+    "area": "Administration",
+    "employer": "ABH",
+    "start": "2018-08-22",
+    "type": "perm"
+  },
+  {
+    "id": "s020",
+    "first": "Jim",
+    "last": "Samuelu",
+    "shift": "Day",
+    "area": "Warehouse",
+    "employer": "Hoban",
+    "start": "2026-07-06",
+    "type": "temp"
+  },
+  {
+    "id": "s021",
+    "first": "Junior",
+    "last": "Sani",
+    "shift": "Day",
+    "area": "Production",
+    "employer": "ABH",
+    "start": "2026-04-06",
+    "type": "perm"
+  },
+  {
+    "id": "s022",
+    "first": "Kate",
+    "last": "Harris",
+    "shift": "Day",
+    "area": "Administration",
+    "employer": "ABH",
+    "start": "2017-09-04",
+    "type": "perm"
+  },
+  {
+    "id": "s023",
+    "first": "Kevin",
+    "last": "Sarabia",
+    "shift": "Day",
+    "area": "Production",
+    "employer": "Hoban",
+    "start": "2026-09-21",
+    "type": "temp"
+  },
+  {
+    "id": "s024",
+    "first": "Kevin",
+    "last": "Saju",
+    "shift": "Day",
+    "area": "Warehouse",
+    "employer": "Hoban",
+    "start": "2026-06-01",
+    "type": "temp"
+  },
+  {
+    "id": "s025",
+    "first": "Lafeta",
+    "last": "Lauafia",
+    "shift": "Day",
+    "area": "Production",
+    "employer": "ABH",
+    "start": "",
+    "type": "perm"
+  },
+  {
+    "id": "s026",
+    "first": "Linus",
+    "last": "Velso",
+    "shift": "Afternoon",
+    "area": "Production",
+    "employer": "Fuse",
+    "start": "2026-04-28",
+    "type": "temp"
+  },
+  {
+    "id": "s027",
+    "first": "Mamata",
+    "last": "Dhakal",
+    "shift": "Day",
+    "area": "Quality",
+    "employer": "ABH",
+    "start": "2026-03-02",
+    "type": "perm"
+  },
+  {
+    "id": "s028",
+    "first": "Mirza",
+    "last": "Naeem",
+    "shift": "Afternoon",
+    "area": "Production",
+    "employer": "ABH",
+    "start": "2025-10-31",
+    "type": "perm"
+  },
+  {
+    "id": "s029",
+    "first": "Mitchell",
+    "last": "Van Dyken",
+    "shift": "Day",
+    "area": "Production",
+    "employer": "Hoban",
+    "start": "2025-09-15",
+    "type": "temp"
+  },
+  {
+    "id": "s030",
+    "first": "Patrick",
+    "last": "Rose",
+    "shift": "Day",
+    "area": "Production",
+    "employer": "ABH",
+    "start": "2021-12-10",
+    "type": "perm"
+  },
+  {
+    "id": "s031",
+    "first": "Paul",
+    "last": "Gan",
+    "shift": "Day",
+    "area": "Warehouse",
+    "employer": "ABH",
+    "start": "2026-09-21",
+    "type": "perm"
+  },
+  {
+    "id": "s032",
+    "first": "Paula",
+    "last": "Falefata",
+    "shift": "Afternoon",
+    "area": "Production",
+    "employer": "ABH",
+    "start": "2026-01-02",
+    "type": "perm"
+  },
+  {
+    "id": "s033",
+    "first": "Penaia",
+    "last": "Lafeta",
+    "shift": "Afternoon",
+    "area": "Production",
+    "employer": "Hoban",
+    "start": "2026-07-31",
+    "type": "temp"
+  },
+  {
+    "id": "s034",
+    "first": "Prakash",
+    "last": "Periyasamy",
+    "shift": "Afternoon",
+    "area": "Quality",
+    "employer": "ABH",
+    "start": "2026-02-02",
+    "type": "perm"
+  },
+  {
+    "id": "s035",
+    "first": "Revelation",
+    "last": "Manumalealii",
+    "shift": "Day",
+    "area": "Production",
+    "employer": "ABH",
+    "start": "2026-03-07",
+    "type": "perm"
+  },
+  {
+    "id": "s036",
+    "first": "Sabina",
+    "last": "Karmacharya",
+    "shift": "Day",
+    "area": "Production",
+    "employer": "ABH",
+    "start": "2026-07-20",
+    "type": "perm"
+  },
+  {
+    "id": "s037",
+    "first": "Sandra",
+    "last": "Gorail",
+    "shift": "Afternoon",
+    "area": "Production",
+    "employer": "Morgan-Edge",
+    "start": "2026-09-28",
+    "type": "temp"
+  },
+  {
+    "id": "s038",
+    "first": "Savelio",
+    "last": "Neueli",
+    "shift": "Day",
+    "area": "Production",
+    "employer": "ABH",
+    "start": "2022-10-05",
+    "type": "perm"
+  },
+  {
+    "id": "s039",
+    "first": "Setu",
+    "last": "Faamatuainu",
+    "shift": "Day",
+    "area": "Production",
+    "employer": "ABH",
+    "start": "2023-04-24",
+    "type": "perm"
+  },
+  {
+    "id": "s040",
+    "first": "Shane",
+    "last": "Clarke",
+    "shift": "Afternoon",
+    "area": "Warehouse",
+    "employer": "ABH",
+    "start": "2021-07-01",
+    "type": "perm"
+  },
+  {
+    "id": "s041",
+    "first": "Sharon",
+    "last": "Salt",
+    "shift": "Day",
+    "area": "Administration",
+    "employer": "ABH",
+    "start": "",
+    "type": "perm"
+  },
+  {
+    "id": "s042",
+    "first": "Simi",
+    "last": "Leutele",
+    "shift": "Afternoon",
+    "area": "Production",
+    "employer": "ABH",
+    "start": "2022-12-01",
+    "type": "perm"
+  },
+  {
+    "id": "s043",
+    "first": "Simione",
+    "last": "Kuribola",
+    "shift": "Afternoon",
+    "area": "Production",
+    "employer": "Hoban",
+    "start": "2026-06-01",
+    "type": "temp"
+  },
+  {
+    "id": "s044",
+    "first": "Sosaia",
+    "last": "Unasa",
+    "shift": "Afternoon",
+    "area": "Production",
+    "employer": "ABH",
+    "start": "2025-03-18",
+    "type": "perm"
+  },
+  {
+    "id": "s045",
+    "first": "Stephanie",
+    "last": "Rabukawaqa",
+    "shift": "Day",
+    "area": "Production",
+    "employer": "ABH",
+    "start": "2026-01-12",
+    "type": "perm"
+  },
+  {
+    "id": "s046",
+    "first": "Tavita",
+    "last": "Gavet",
+    "shift": "Day",
+    "area": "Warehouse",
+    "employer": "Hoban",
+    "start": "2026-08-07",
+    "type": "temp"
+  },
+  {
+    "id": "s047",
+    "first": "Tile",
+    "last": "Sue",
+    "shift": "Day",
+    "area": "Production",
+    "employer": "ABH",
+    "start": "2025-07-20",
+    "type": "perm"
+  },
+  {
+    "id": "s048",
+    "first": "Uati",
+    "last": "Faaiuaso",
+    "shift": "Afternoon",
+    "area": "Warehouse",
+    "employer": "ABH",
+    "start": "2026-09-02",
+    "type": "perm"
+  },
+  {
+    "id": "s049",
+    "first": "Viserio",
+    "last": "Masilo",
+    "shift": "Afternoon",
+    "area": "Production",
+    "employer": "ABH",
+    "start": "2021-01-01",
+    "type": "perm"
+  }
+];
+const TRAINING_TYPES = [
+  {
+    "id": "t01",
+    "name": "WHS Site Induction",
+    "cat": "Compliance",
+    "expiry_months": null,
+    "mandatory": true,
+    "short": "WHS Induction"
+  },
+  {
+    "id": "t02",
+    "name": "Induction / GMP Training",
+    "cat": "Compliance",
+    "expiry_months": 12,
+    "mandatory": true,
+    "short": "GMP"
+  },
+  {
+    "id": "t03",
+    "name": "HACCP Training",
+    "cat": "Compliance",
+    "expiry_months": 24,
+    "mandatory": true,
+    "short": "HACCP"
+  },
+  {
+    "id": "t04",
+    "name": "CCP Training",
+    "cat": "Compliance",
+    "expiry_months": 24,
+    "mandatory": true,
+    "short": "CCP"
+  },
+  {
+    "id": "t05",
+    "name": "QCP Training",
+    "cat": "Compliance",
+    "expiry_months": 24,
+    "mandatory": true,
+    "short": "QCP"
+  },
+  {
+    "id": "t06",
+    "name": "First Aid Certificate",
+    "cat": "Compliance",
+    "expiry_months": 36,
+    "mandatory": true,
+    "short": "First Aid"
+  },
+  {
+    "id": "t07",
+    "name": "Fire Warden Training",
+    "cat": "Compliance",
+    "expiry_months": 12,
+    "mandatory": true,
+    "short": "Fire Warden"
+  },
+  {
+    "id": "t08",
+    "name": "Emergency Warden",
+    "cat": "Compliance",
+    "expiry_months": 12,
+    "mandatory": false,
+    "short": "Emg. Warden"
+  },
+  {
+    "id": "t09",
+    "name": "Manual Handling / Correct Lifting",
+    "cat": "Compliance",
+    "expiry_months": 36,
+    "mandatory": true,
+    "short": "Manual Handling"
+  },
+  {
+    "id": "t10",
+    "name": "Chemical Handling / Dangerous Goods",
+    "cat": "Compliance",
+    "expiry_months": 24,
+    "mandatory": false,
+    "short": "Chemical Handling"
+  },
+  {
+    "id": "t11",
+    "name": "Incident Reporting Training",
+    "cat": "Compliance",
+    "expiry_months": null,
+    "mandatory": true,
+    "short": "Incident Reporting"
+  },
+  {
+    "id": "t12",
+    "name": "Paperwork / Documentation Training",
+    "cat": "Compliance",
+    "expiry_months": null,
+    "mandatory": true,
+    "short": "Paperwork"
+  },
+  {
+    "id": "t13",
+    "name": "Safety Culture App Training",
+    "cat": "Compliance",
+    "expiry_months": null,
+    "mandatory": true,
+    "short": "Safety Culture"
+  },
+  {
+    "id": "t14",
+    "name": "Workplace Harassment & Discrimination",
+    "cat": "Compliance",
+    "expiry_months": null,
+    "mandatory": false,
+    "short": "WH&D"
+  },
+  {
+    "id": "t15",
+    "name": "Scholle Filler Operator",
+    "cat": "Machine Operator",
+    "expiry_months": 24,
+    "mandatory": false,
+    "short": "Scholle Filler"
+  },
+  {
+    "id": "t16",
+    "name": "HMPS Operator",
+    "cat": "Machine Operator",
+    "expiry_months": 24,
+    "mandatory": false,
+    "short": "HMPS Op."
+  },
+  {
+    "id": "t17",
+    "name": "Recopak Operator",
+    "cat": "Machine Operator",
+    "expiry_months": 24,
+    "mandatory": false,
+    "short": "Recopak"
+  },
+  {
+    "id": "t18",
+    "name": "CIP (Clean in Place)",
+    "cat": "Machine Operator",
+    "expiry_months": 12,
+    "mandatory": false,
+    "short": "CIP"
+  },
+  {
+    "id": "t19",
+    "name": "Waste Management",
+    "cat": "Machine Operator",
+    "expiry_months": 12,
+    "mandatory": true,
+    "short": "Waste Mgmt"
+  },
+  {
+    "id": "t20",
+    "name": "Shrink Tunnel Operator",
+    "cat": "Machine Operator",
+    "expiry_months": 24,
+    "mandatory": false,
+    "short": "Shrink Tunnel"
+  },
+  {
+    "id": "t21",
+    "name": "Overpacker Operator",
+    "cat": "Machine Operator",
+    "expiry_months": 24,
+    "mandatory": false,
+    "short": "Overpacker"
+  },
+  {
+    "id": "t22",
+    "name": "Labeller Operator",
+    "cat": "Machine Operator",
+    "expiry_months": 24,
+    "mandatory": false,
+    "short": "Labeller"
+  },
+  {
+    "id": "t23",
+    "name": "Forklift Pre-start Safety Check",
+    "cat": "Machine Operator",
+    "expiry_months": 12,
+    "mandatory": false,
+    "short": "FL Pre-start"
+  },
+  {
+    "id": "t24",
+    "name": "Forklift Licence (LF)",
+    "cat": "Licence",
+    "expiry_months": 60,
+    "mandatory": false,
+    "short": "Forklift Lic."
+  },
+  {
+    "id": "t25",
+    "name": "High Reach Licence (LO)",
+    "cat": "Licence",
+    "expiry_months": 60,
+    "mandatory": false,
+    "short": "High Reach"
+  },
+  {
+    "id": "t26",
+    "name": "Electrical / Restricted Elec. Licence",
+    "cat": "Licence",
+    "expiry_months": null,
+    "mandatory": false,
+    "short": "Electrical"
+  },
+  {
+    "id": "t27",
+    "name": "Boilermaker / Welder's Licence",
+    "cat": "Licence",
+    "expiry_months": null,
+    "mandatory": false,
+    "short": "Welder"
+  }
+];
+const SAMPLE_RECORDS = [
+  {
+    "staff_id": "s001",
+    "training_id": "t06",
+    "completed": "2026-06-12",
+    "expiry": "2029-06-12",
+    "doc_url": ""
+  },
+  {
+    "staff_id": "s002",
+    "training_id": "t02",
+    "completed": "2025-09-30",
+    "expiry": "2026-09-30",
+    "doc_url": ""
+  },
+  {
+    "staff_id": "s004",
+    "training_id": "t02",
+    "completed": "2025-09-25",
+    "expiry": "2026-09-25",
+    "doc_url": ""
+  },
+  {
+    "staff_id": "s008",
+    "training_id": "t02",
+    "completed": "2026-02-10",
+    "expiry": "2027-02-10",
+    "doc_url": ""
+  },
+  {
+    "staff_id": "s009",
+    "training_id": "t02",
+    "completed": "2026-08-14",
+    "expiry": "2027-08-14",
+    "doc_url": ""
+  },
+  {
+    "staff_id": "s011",
+    "training_id": "t02",
+    "completed": "2026-09-28",
+    "expiry": "2027-09-28",
+    "doc_url": ""
+  },
+  {
+    "staff_id": "s012",
+    "training_id": "t02",
+    "completed": "2026-09-15",
+    "expiry": "2027-09-15",
+    "doc_url": ""
+  },
+  {
+    "staff_id": "s013",
+    "training_id": "t02",
+    "completed": "2026-02-04",
+    "expiry": "2027-02-04",
+    "doc_url": ""
+  },
+  {
+    "staff_id": "s013",
+    "training_id": "t07",
+    "completed": "2026-02-16",
+    "expiry": "2027-02-16",
+    "doc_url": ""
+  },
+  {
+    "staff_id": "s014",
+    "training_id": "t02",
+    "completed": "2026-02-10",
+    "expiry": "2027-02-10",
+    "doc_url": ""
+  },
+  {
+    "staff_id": "s015",
+    "training_id": "t06",
+    "completed": "2026-06-12",
+    "expiry": "2029-06-12",
+    "doc_url": ""
+  },
+  {
+    "staff_id": "s016",
+    "training_id": "t02",
+    "completed": "2025-09-24",
+    "expiry": "2026-09-24",
+    "doc_url": ""
+  },
+  {
+    "staff_id": "s017",
+    "training_id": "t02",
+    "completed": "2025-09-25",
+    "expiry": "2026-09-25",
+    "doc_url": ""
+  },
+  {
+    "staff_id": "s019",
+    "training_id": "t02",
+    "completed": "2025-09-24",
+    "expiry": "2026-09-24",
+    "doc_url": ""
+  },
+  {
+    "staff_id": "s022",
+    "training_id": "t02",
+    "completed": "2025-10-01",
+    "expiry": "2026-10-01",
+    "doc_url": ""
+  },
+  {
+    "staff_id": "s023",
+    "training_id": "t02",
+    "completed": "2026-09-21",
+    "expiry": "2027-09-21",
+    "doc_url": ""
+  },
+  {
+    "staff_id": "s026",
+    "training_id": "t02",
+    "completed": "2026-06-22",
+    "expiry": "2027-06-22",
+    "doc_url": ""
+  },
+  {
+    "staff_id": "s026",
+    "training_id": "t06",
+    "completed": "2026-06-12",
+    "expiry": "2029-06-12",
+    "doc_url": ""
+  },
+  {
+    "staff_id": "s027",
+    "training_id": "t02",
+    "completed": "2026-03-02",
+    "expiry": "2027-03-02",
+    "doc_url": ""
+  },
+  {
+    "staff_id": "s027",
+    "training_id": "t03",
+    "completed": "2026-09-22",
+    "expiry": "2028-09-22",
+    "doc_url": ""
+  },
+  {
+    "staff_id": "s028",
+    "training_id": "t02",
+    "completed": "2026-02-03",
+    "expiry": "2027-02-03",
+    "doc_url": ""
+  },
+  {
+    "staff_id": "s029",
+    "training_id": "t02",
+    "completed": "2026-02-05",
+    "expiry": "2027-02-05",
+    "doc_url": ""
+  },
+  {
+    "staff_id": "s030",
+    "training_id": "t02",
+    "completed": "2025-09-24",
+    "expiry": "2026-09-24",
+    "doc_url": ""
+  },
+  {
+    "staff_id": "s030",
+    "training_id": "t05",
+    "completed": "2025-11-24",
+    "expiry": "2027-11-24",
+    "doc_url": ""
+  },
+  {
+    "staff_id": "s030",
+    "training_id": "t12",
+    "completed": "2025-11-24",
+    "expiry": null,
+    "doc_url": ""
+  },
+  {
+    "staff_id": "s030",
+    "training_id": "t13",
+    "completed": "2025-11-24",
+    "expiry": null,
+    "doc_url": ""
+  },
+  {
+    "staff_id": "s031",
+    "training_id": "t02",
+    "completed": "2026-09-21",
+    "expiry": "2027-09-21",
+    "doc_url": ""
+  },
+  {
+    "staff_id": "s032",
+    "training_id": "t02",
+    "completed": "2026-02-04",
+    "expiry": "2027-02-04",
+    "doc_url": ""
+  },
+  {
+    "staff_id": "s033",
+    "training_id": "t02",
+    "completed": "2026-08-14",
+    "expiry": "2027-08-14",
+    "doc_url": ""
+  },
+  {
+    "staff_id": "s034",
+    "training_id": "t02",
+    "completed": "2026-02-03",
+    "expiry": "2027-02-03",
+    "doc_url": ""
+  },
+  {
+    "staff_id": "s041",
+    "training_id": "t02",
+    "completed": "2026-02-03",
+    "expiry": "2027-02-03",
+    "doc_url": ""
+  },
+  {
+    "staff_id": "s041",
+    "training_id": "t06",
+    "completed": "2026-06-12",
+    "expiry": "2029-06-12",
+    "doc_url": ""
+  },
+  {
+    "staff_id": "s040",
+    "training_id": "t02",
+    "completed": "2026-02-10",
+    "expiry": "2027-02-10",
+    "doc_url": ""
+  },
+  {
+    "staff_id": "s040",
+    "training_id": "t06",
+    "completed": "2026-06-12",
+    "expiry": "2029-06-12",
+    "doc_url": ""
+  },
+  {
+    "staff_id": "s043",
+    "training_id": "t02",
+    "completed": "2026-08-14",
+    "expiry": "2027-08-14",
+    "doc_url": ""
+  },
+  {
+    "staff_id": "s044",
+    "training_id": "t02",
+    "completed": "2025-09-24",
+    "expiry": "2026-09-24",
+    "doc_url": ""
+  },
+  {
+    "staff_id": "s047",
+    "training_id": "t02",
+    "completed": "2025-09-26",
+    "expiry": "2026-09-26",
+    "doc_url": ""
+  },
+  {
+    "staff_id": "s049",
+    "training_id": "t02",
+    "completed": "2025-09-25",
+    "expiry": "2026-09-25",
+    "doc_url": ""
+  }
+];
+
+// ─── State ───────────────────────────────────────────────────────────────────
+let records = JSON.parse(localStorage.getItem('abh_training_records') || 'null') || [...SAMPLE_RECORDS];
+let staff = JSON.parse(localStorage.getItem('abh_training_staff') || 'null') || [...STAFF_DATA];
+let currentModal = {staff_id: null, training_id: null};
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function today() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function getRecord(staff_id, training_id) {
+  return records.find(r => r.staff_id === staff_id && r.training_id === training_id);
+}
+
+function cellStatus(rec, trainingType) {
+  if (!rec) return 'none';
+  if (!rec.completed) return 'none';
+  if (!rec.expiry || !trainingType.expiry_months) return 'green'; // no expiry
+  const exp = new Date(rec.expiry);
+  const now = new Date();
+  const daysLeft = Math.floor((exp - now) / 86400000);
+  if (daysLeft < 0) return 'expired';
+  if (daysLeft <= 90) return 'amber';
+  return 'green';
+}
+
+function cellLabel(rec, status) {
+  if (status === 'none') return '<span class="cell-status cs-none">--</span>';
+  if (status === 'expired') {
+    const exp = new Date(rec.expiry);
+    const now = new Date();
+    const days = Math.floor((now - exp) / 86400000);
+    return `<span class="cell-status cs-expired" title="Expired ${rec.expiry}">EXP ${days}d</span>`;
+  }
+  if (status === 'amber') {
+    const exp = new Date(rec.expiry);
+    const now = new Date();
+    const days = Math.floor((exp - now) / 86400000);
+    return `<span class="cell-status cs-amber" title="Expires ${rec.expiry}">${days}d</span>`;
+  }
+  if (status === 'green') {
+    const d = rec.completed ? rec.completed.slice(0,7) : '';
+    return `<span class="cell-status cs-green" title="Completed ${rec.completed}">${d}</span>`;
+  }
+  return '';
+}
+
+function fmtDate(d) {
+  if (!d) return '';
+  const p = d.split('-');
+  return p[2]+'/'+p[1]+'/'+p[0];
+}
+
+function saveState() {
+  localStorage.setItem('abh_training_records', JSON.stringify(records));
+  localStorage.setItem('abh_training_staff', JSON.stringify(staff));
+}
+
+// ─── Filter logic ─────────────────────────────────────────────────────────────
+function getFiltered() {
+  const area = document.getElementById('filter-area').value;
+  const shift = document.getElementById('filter-shift').value;
+  const emp = document.getElementById('filter-employer').value;
+  const cat = document.getElementById('filter-cat').value;
+  const search = document.getElementById('filter-search').value.toLowerCase();
+
+  let fs = staff.filter(s => {
+    if (area && s.area !== area) return false;
+    if (shift && s.shift !== shift) return false;
+    if (emp === 'ABH' && s.employer !== 'ABH') return false;
+    if (emp === 'Agency/Temp' && s.employer === 'ABH') return false;
+    if (search && !(s.first+' '+s.last).toLowerCase().includes(search)) return false;
+    return true;
+  });
+
+  let tt = TRAINING_TYPES.filter(t => {
+    if (cat && t.cat !== cat) return false;
+    return true;
+  });
+
+  return {staff: fs, types: tt};
+}
+
+// ─── Render Matrix ────────────────────────────────────────────────────────────
+function renderMatrix() {
+  const {staff: fs, types: tt} = getFiltered();
+  const head = document.getElementById('matrix-head');
+  const body = document.getElementById('matrix-body');
+
+  // Category groups
+  const cats = [...new Set(tt.map(t => t.cat))];
+  let headHtml = '<tr><th rowspan="2" style="min-width:140px;text-align:left;padding-left:8px;">Staff Member</th><th rowspan="2" style="min-width:55px;">Area</th><th rowspan="2" style="min-width:55px;">Shift</th>';
+  cats.forEach(cat => {
+    const count = tt.filter(t => t.cat === cat).length;
+    headHtml += `<th colspan="${count}" class="cat-header">${cat}</th>`;
+  });
+  headHtml += '</tr><tr>';
+  cats.forEach(cat => {
+    tt.filter(t => t.cat === cat).forEach(t => {
+      headHtml += `<th title="${t.name}" style="min-width:52px;max-width:52px;font-size:9px;">${t.short}</th>`;
+    });
+  });
+  headHtml += '</tr>';
+  head.innerHTML = headHtml;
+
+  let green=0, amber=0, expired=0, missing=0;
+  let bodyHtml = '';
+  fs.forEach(s => {
+    const nameLink = s.first+' '+s.last;
+    const areaColor = {Production:'#e8f4fd',Warehouse:'#e8f5e9',Quality:'#fff9e6',Administration:'#f3e8ff',Maintenance:'#ffeee8'}[s.area] || '#fff';
+    bodyHtml += `<tr>`;
+    const empClass = s.employer==='ABH'?'emp-abh':'emp-temp';
+    bodyHtml += `<td class="staff-name" style="background:white">${nameLink} <span class="emp-badge ${empClass}" style="font-size:9px">${s.employer}</span></td>`;
+    bodyHtml += `<td class="staff-meta">${s.area}</td>`;
+    bodyHtml += `<td class="staff-meta">${s.shift}</td>`;
+    tt.forEach(t => {
+      const rec = getRecord(s.id, t.id);
+      const st = cellStatus(rec, t);
+      if (st==='green') green++;
+      else if (st==='amber') amber++;
+      else if (st==='expired') expired++;
+      else missing++;
+      const clickAttr = `onclick="openModal('${s.id}','${t.id}')"`;
+      bodyHtml += `<td class="cell" ${clickAttr} title="${s.first} ${s.last} — ${t.name}">${cellLabel(rec, st)}</td>`;
+    });
+    bodyHtml += `</tr>`;
+  });
+
+  body.innerHTML = bodyHtml;
+
+  // KPIs
+  document.getElementById('kpi-current').textContent = green;
+  document.getElementById('kpi-due').textContent = amber;
+  document.getElementById('kpi-expired').textContent = expired;
+  document.getElementById('kpi-missing').textContent = missing;
+  document.getElementById('kpi-staff').textContent = fs.length;
+}
+
+// ─── Gaps View ────────────────────────────────────────────────────────────────
+function renderGaps() {
+  const now = new Date();
+  const mandatoryTypes = TRAINING_TYPES.filter(t => t.mandatory);
+
+  let expHtml = '', dueHtml = '', missHtml = '';
+
+  records.forEach(r => {
+    if (!r.expiry) return;
+    const exp = new Date(r.expiry);
+    const daysLeft = Math.floor((exp - now) / 86400000);
+    const s = staff.find(x => x.id === r.staff_id);
+    const t = TRAINING_TYPES.find(x => x.id === r.training_id);
+    if (!s || !t) return;
+
+    if (daysLeft < 0) {
+      expHtml += `<tr><td style="font-weight:600">${s.first} ${s.last}</td><td>${t.name}</td><td>${fmtDate(r.completed)}</td><td style="color:var(--red);font-weight:700">${fmtDate(r.expiry)}</td><td style="color:var(--red);font-weight:700">${Math.abs(daysLeft)} days</td></tr>`;
+    } else if (daysLeft <= 90) {
+      dueHtml += `<tr><td style="font-weight:600">${s.first} ${s.last}</td><td>${t.name}</td><td>${fmtDate(r.completed)}</td><td style="color:var(--amber);font-weight:700">${fmtDate(r.expiry)}</td><td style="color:var(--amber);font-weight:700">${daysLeft} days</td></tr>`;
+    }
+  });
+
+  // Mandatory gaps
+  staff.forEach(s => {
+    mandatoryTypes.forEach(t => {
+      const rec = getRecord(s.id, t.id);
+      if (!rec) {
+        missHtml += `<tr><td style="font-weight:600">${s.first} ${s.last}</td><td>${s.area}</td><td>${t.name}</td></tr>`;
+      }
+    });
+  });
+
+  document.getElementById('gaps-expired').innerHTML = expHtml || '<tr><td colspan="5" style="color:#888;padding:12px;text-align:center">No expired training records.</td></tr>';
+  document.getElementById('gaps-due').innerHTML = dueHtml || '<tr><td colspan="5" style="color:#888;padding:12px;text-align:center">No training due within 90 days.</td></tr>';
+  document.getElementById('gaps-missing').innerHTML = missHtml || '<tr><td colspan="3" style="color:#888;padding:12px;text-align:center">All mandatory training recorded.</td></tr>';
+}
+
+// ─── Staff View ───────────────────────────────────────────────────────────────
+function renderStaff() {
+  const body = document.getElementById('staff-body');
+  const mandatoryTypes = TRAINING_TYPES.filter(t => t.mandatory);
+  let html = '';
+  [...staff].sort((a,b) => a.last.localeCompare(b.last)).forEach(s => {
+    const srecs = records.filter(r => r.staff_id === s.id);
+    const gaps = mandatoryTypes.filter(t => !getRecord(s.id, t.id)).length;
+    const empClass = s.employer==='ABH'?'emp-abh':'emp-temp';
+    html += `<tr>
+      <td style="font-weight:600">${s.first} ${s.last}</td>
+      <td>${s.shift}</td>
+      <td>${s.area}</td>
+      <td><span class="emp-badge ${empClass}">${s.employer}</span></td>
+      <td>${fmtDate(s.start)}</td>
+      <td>${s.type==='perm'?'Permanent':'Temp/Agency'}</td>
+      <td>${srecs.length}</td>
+      <td style="${gaps>0?'color:var(--red);font-weight:700':''}">
+        ${gaps>0 ? gaps+' mandatory gap'+(gaps>1?'s':'') : '<span style="color:var(--green)">&#10003;</span>'}
+      </td>
+    </tr>`;
+  });
+  body.innerHTML = html;
+}
+
+// ─── Training Types View ──────────────────────────────────────────────────────
+function renderTypes() {
+  const grid = document.getElementById('types-grid');
+  let html = '';
+  TRAINING_TYPES.forEach(t => {
+    const expText = t.expiry_months === null ? 'No expiry' :
+                    t.expiry_months === 0 ? 'One-time' :
+                    `Retrain every ${t.expiry_months} months`;
+    const warn = t.expiry_months ? ` (amber at ${Math.min(3, Math.floor(t.expiry_months/4))} months)` : '';
+    const mandatory = t.mandatory ? '<span class="mandatory-badge">MANDATORY</span>' : '';
+    html += `<div class="type-card cat-${t.cat}">
+      <div class="tc-name">${t.name} ${mandatory}</div>
+      <div class="tc-cat">${t.cat}</div>
+      <div class="tc-expiry">${expText}${warn}</div>
+    </div>`;
+  });
+  grid.innerHTML = html;
+}
+
+// ─── Modal ────────────────────────────────────────────────────────────────────
+function openModal(staff_id, training_id) {
+  currentModal = {staff_id, training_id};
+  const s = staff.find(x => x.id === staff_id);
+  const t = TRAINING_TYPES.find(x => x.id === training_id);
+  const rec = getRecord(staff_id, training_id);
+
+  document.getElementById('modal-staff').value = s.first+' '+s.last;
+  document.getElementById('modal-training').value = t.name;
+  document.getElementById('modal-date').value = rec ? rec.completed : '';
+  document.getElementById('modal-expiry').value = rec ? (rec.expiry || '') : '';
+  document.getElementById('modal-docurl').value = rec ? (rec.doc_url || '') : '';
+  document.getElementById('modal-notes').value = rec ? (rec.notes || '') : '';
+
+  if (t.expiry_months) {
+    document.getElementById('modal-expiry-hint').textContent =
+      'Retraining required every '+t.expiry_months+' months. Amber alert at 90 days before expiry.';
+  } else {
+    document.getElementById('modal-expiry-hint').textContent = 'This training has no expiry date.';
+  }
+
+  // Auto-calculate expiry when date is entered
+  document.getElementById('modal-date').oninput = function() {
+    if (t.expiry_months && this.value) {
+      const d = new Date(this.value);
+      d.setMonth(d.getMonth() + t.expiry_months);
+      document.getElementById('modal-expiry').value = d.toISOString().split('T')[0];
+    }
+  };
+
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+}
+
+function saveTraining() {
+  const completed = document.getElementById('modal-date').value;
+  if (!completed) { alert('Please enter a completion date.'); return; }
+
+  const expiry = document.getElementById('modal-expiry').value || null;
+  const doc_url = document.getElementById('modal-docurl').value;
+  const notes = document.getElementById('modal-notes').value;
+
+  // Remove existing record
+  records = records.filter(r => !(r.staff_id === currentModal.staff_id && r.training_id === currentModal.training_id));
+  records.push({...currentModal, completed, expiry, doc_url, notes});
+
+  saveState();
+  closeModal();
+  renderMatrix();
+  renderGaps();
+}
+
+// ─── Add temp staff ──────────────────────────────────────────────────────────
+function addTempStaff() {
+  const first = document.getElementById('add-first').value.trim();
+  const last = document.getElementById('add-last').value.trim();
+  const employer = document.getElementById('add-employer').value.trim();
+  if (!first || !last || !employer) { alert('Please fill in First Name, Last Name and Agency/Employer.'); return; }
+
+  const newStaff = {
+    id: 'temp_'+Date.now(),
+    first, last,
+    shift: document.getElementById('add-shift').value,
+    area: document.getElementById('add-area').value,
+    employer, type: 'temp',
+    start: document.getElementById('add-start').value
+  };
+
+  staff.push(newStaff);
+  saveState();
+
+  document.getElementById('add-first').value = '';
+  document.getElementById('add-last').value = '';
+  document.getElementById('add-employer').value = '';
+  document.getElementById('add-start').value = '';
+
+  alert(first+' '+last+' added successfully.');
+  showView('matrix');
+}
+
+// ─── Tab navigation ──────────────────────────────────────────────────────────
+function showView(view) {
+  ['matrix','gaps','staff','types','add'].forEach(v => {
+    document.getElementById('view-'+v).style.display = 'none';
+  });
+  document.getElementById('view-'+view).style.display = 'block';
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    t.classList.toggle('active', ['matrix','gaps','staff','types','add'][i] === view);
+  });
+  if (view==='matrix') renderMatrix();
+  if (view==='gaps') renderGaps();
+  if (view==='staff') renderStaff();
+  if (view==='types') renderTypes();
+  // hide KPI bar on non-matrix views
+  document.getElementById('kpi-bar').style.display = view==='matrix' ? 'flex' : 'none';
+}
+
+function applyFilters() { renderMatrix(); }
+
+// ─── Export ───────────────────────────────────────────────────────────────────
+function exportCSV() {
+  const {staff: fs, types: tt} = getFiltered();
+  let rows = [['Staff Member','Area','Shift','Employer'].concat(tt.map(t=>t.name))];
+  fs.forEach(s => {
+    const row = [s.first+' '+s.last, s.area, s.shift, s.employer];
+    tt.forEach(t => {
+      const rec = getRecord(s.id, t.id);
+      const st = cellStatus(rec, t);
+      if (st==='none') row.push('');
+      else if (st==='expired') row.push('EXPIRED: '+rec.completed);
+      else row.push(rec.completed);
+    });
+    rows.push(row);
+  });
+  const csv = rows.map(r => r.map(c => '"'+(c||'').replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download = 'ABH_Training_Matrix_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+}
+
+function exportPrint() { window.print(); }
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+showView('matrix');
+</script>
+</body>
+</html>
