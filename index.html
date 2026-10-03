@@ -39,9 +39,9 @@
   .kpi-dot.none{background:#ddd}
   .kpi strong{font-weight:700}
 
-  .matrix-container{overflow:auto;max-height:calc(100vh - 185px)}
+  .matrix-container{overflow-x:scroll;overflow-y:auto;max-height:calc(100vh - 185px)}
   table.matrix{border-collapse:collapse;min-width:100%;font-size:11px}
-  table.matrix th{background:var(--navy);color:white;padding:6px 4px;white-space:nowrap;position:sticky;top:0;z-index:10;font-weight:600;font-size:10px;text-align:center;border:1px solid rgba(255,255,255,.15)}
+  table.matrix th{background:var(--navy);color:white;padding:6px 4px;white-space:normal;word-break:break-word;position:sticky;top:0;z-index:10;font-weight:600;font-size:10px;text-align:center;border:1px solid rgba(255,255,255,.15);vertical-align:bottom;line-height:1.2}
   table.matrix th.cat-header{background:#253d6e;font-size:9px;letter-spacing:.5px;text-transform:uppercase}
   table.matrix td.staff-name{position:sticky;left:0;z-index:5;background:white;font-weight:600;white-space:nowrap;padding:4px 8px;border-right:2px solid var(--navy);border-bottom:1px solid #eee;min-width:160px}
   table.matrix td.staff-meta{background:#f8f9fc;padding:4px 6px;white-space:nowrap;border-bottom:1px solid #eee;font-size:10px;color:#666}
