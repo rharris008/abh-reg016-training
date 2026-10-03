@@ -1937,27 +1937,27 @@ function renderMatrix() {
   const body=document.getElementById('matrix-body');
   const cats=[...new Set(tt.map(t=>t.cat))];
 
+  const CAT_COLOURS = {
+    'Compliance':      '#1B2A4A',
+    'Food Safety':     '#922b21',
+    'Machine Operator':'#0a5fa0',
+    'Warehouse':       '#6c3483',
+    'Maintenance':     '#a04000',
+    'Licence':         '#b7770d',
+    'Leadership':      '#1e8449',
+  };
   const si = (col) => sortState.col===col ? (sortState.dir==='asc'?' ▲':' ▼') : '';
-  const sh = (col,label,style='') => `<th onclick="setSortCol('${col}')" style="cursor:pointer;${style}">${label}${si(col)}</th>`;
-  let headHtml=`<tr>${sh('name','Staff Member','min-width:160px;text-align:left;padding-left:8px')} rowspan="2"`;
-  // Fix: build properly
-  headHtml = '<tr>'
-    + `<th onclick="setSortCol('name')" rowspan="2" style="cursor:pointer;min-width:160px;text-align:left;padding-left:8px">Name${si('name')}</th>`
-    + `<th onclick="setSortCol('area')" rowspan="2" style="cursor:pointer;min-width:55px">Area${si('area')}</th>`
-    + `<th onclick="setSortCol('shift')" rowspan="2" style="cursor:pointer;min-width:55px">Shift${si('shift')}</th>`;
-  cats.forEach(cat=>{
-    const count=tt.filter(t=>t.cat===cat).length;
-    headHtml+=`<th colspan="${count}" class="cat-header">${cat}</th>`;
+  let headHtml = '<tr>'
+    + `<th onclick="setSortCol('name')" style="cursor:pointer;min-width:160px;text-align:left;padding-left:8px">Name${si('name')}</th>`
+    + `<th onclick="setSortCol('area')" style="cursor:pointer;min-width:55px">Area${si('area')}</th>`
+    + `<th onclick="setSortCol('shift')" style="cursor:pointer;min-width:55px">Shift${si('shift')}</th>`;
+  tt.forEach(t=>{
+    const mand = t.mandatory ? '*' : '';
+    const bg   = sortState.col===t.id ? '#0a5fa0' : (CAT_COLOURS[t.cat]||'#1B2A4A');
+    const title = `${t.name} [${t.cat}]${t.expiry_months?' — retrain '+t.expiry_months+'m':''}`;
+    headHtml += `<th onclick="setSortCol('${t.id}')" title="${title}" style="cursor:pointer;min-width:52px;max-width:52px;font-size:9px;background:${bg}">${t.short}${mand}${si(t.id)}</th>`;
   });
-  headHtml+='</tr><tr>';
-  cats.forEach(cat=>{
-    tt.filter(t=>t.cat===cat).forEach(t=>{
-      const mand=t.mandatory?'*':'';
-      const active=sortState.col===t.id?'background:#0a5fa0;':''
-      headHtml+=`<th onclick="setSortCol('${t.id}')" title="${t.name}${t.expiry_months?(' — retrain '+t.expiry_months+'m'):''}" style="cursor:pointer;min-width:52px;max-width:52px;font-size:9px;${active}">${t.short}${mand}${si(t.id)}</th>`;
-    });
-  });
-  headHtml+='</tr>';
+  headHtml += '</tr>';
   head.innerHTML=headHtml;
 
   let green=0,amber=0,expired=0,missing=0,bodyHtml='';
