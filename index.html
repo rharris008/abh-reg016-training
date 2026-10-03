@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ABH Training Matrix — REG-016</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
   :root {
     --navy:#1B2A4A; --red:#C0392B; --amber:#E67E22; --green:#27AE60;
@@ -253,7 +252,17 @@
 const SUPA_URL = 'https://yxaebxkkclbjezffmerw.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4YWVieGtrY2xiamV6ZmZtZXJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2MTAwMTEsImV4cCI6MjA5MDE4NjAxMX0.b8oUcdqHAgt03yiAt5LYew1JODx4o_HDjVEdb3pE1Ks';
 let supabase = null, supaReady = false;
-try { supabase = window.supabase ? window.supabase.createClient(SUPA_URL, SUPA_KEY) : null; } catch(e) {}
+
+function loadSupabase() {
+  return new Promise((resolve) => {
+    if (window.supabase) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
+    s.onload = resolve;
+    s.onerror = resolve;
+    document.head.appendChild(s);
+  });
+}
 
 const WFR_STAFF  = [
   {
@@ -1733,7 +1742,9 @@ async function saveTempStaffRecord(s) {
 }
 
 async function initSupabase() {
-  if (!supabase) { setSyncStatus('local'); renderMatrix(); renderGaps(); return; }
+  await loadSupabase();
+  try { supabase = window.supabase ? window.supabase.createClient(SUPA_URL, SUPA_KEY) : null; } catch(e) { supabase = null; }
+  if (!supabase) { setSyncStatus('local'); return; }
   try {
     // Load training records
     const {data:recs,error:e1} = await supabase.from('training_records').select('*');
@@ -2009,8 +2020,9 @@ function exportCSV() {
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
+// Render immediately with seed data, load Supabase in background
 showView('matrix');
-initSupabase();
+setTimeout(initSupabase, 100);
 </script>
 </body>
 </html>
