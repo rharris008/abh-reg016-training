@@ -39,11 +39,12 @@
   .kpi-dot.none{background:#ddd}
   .kpi strong{font-weight:700}
 
-  .matrix-container{overflow-x:scroll;overflow-y:auto;max-height:calc(100vh - 185px)}
-  .matrix-container::-webkit-scrollbar{height:10px;width:8px}
+  .matrix-container{width:100%;overflow-x:scroll;overflow-y:auto;max-height:calc(100vh - 190px);display:block}
+  .matrix-container::-webkit-scrollbar{height:12px;width:8px;background:#e0e0e0}
   .matrix-container::-webkit-scrollbar-track{background:#e0e0e0;border-radius:4px}
-  .matrix-container::-webkit-scrollbar-thumb{background:#888;border-radius:4px}
-  .matrix-container::-webkit-scrollbar-thumb:hover{background:#555}
+  .matrix-container::-webkit-scrollbar-thumb{background:#666;border-radius:4px;min-width:40px}
+  .matrix-container::-webkit-scrollbar-thumb:hover{background:#333}
+  .matrix-container::-webkit-scrollbar-corner{background:#e0e0e0}
   table.matrix{border-collapse:collapse;min-width:100%;font-size:11px}
   table.matrix th{background:var(--navy);color:white;padding:6px 4px;white-space:normal;word-break:break-word;position:sticky;top:0;z-index:10;font-weight:600;font-size:10px;text-align:center;border:1px solid rgba(255,255,255,.15);vertical-align:bottom;line-height:1.2}
   table.matrix th.cat-header{background:#253d6e;font-size:9px;letter-spacing:.5px;text-transform:uppercase}
@@ -1748,6 +1749,33 @@ const SEED_RECORDS   = [
 let records = [...SEED_RECORDS];
 let staff   = [...WFR_STAFF];
 let currentModal = {staff_id: null, training_id: null};
+let sortState = {col: 'name', dir: 'asc'};
+
+function statusRank(st) {
+  return {expired:0, amber:1, none:2, green:3, na:4}[st] ?? 2;
+}
+function sortStaff(fs, tt) {
+  return [...fs].sort((a,b) => {
+    const d = sortState.dir === 'asc' ? 1 : -1;
+    if (sortState.col === 'name') return d * (a.last+a.first).localeCompare(b.last+b.first);
+    if (sortState.col === 'area') return d * a.area.localeCompare(b.area);
+    if (sortState.col === 'shift') return d * a.shift.localeCompare(b.shift);
+    // Training column sort
+    const t = tt.find(x=>x.id===sortState.col);
+    if (t) {
+      const ra = statusRank(cellStatus(getRecord(a.id,t.id),t,a));
+      const rb = statusRank(cellStatus(getRecord(b.id,t.id),t,b));
+      if (ra !== rb) return d * (ra - rb);
+      return (a.last+a.first).localeCompare(b.last+b.first);
+    }
+    return 0;
+  });
+}
+function setSortCol(col) {
+  if (sortState.col === col) sortState.dir = sortState.dir==='asc'?'desc':'asc';
+  else { sortState.col = col; sortState.dir = 'asc'; }
+  renderMatrix();
+}
 
 // ─── Status ───────────────────────────────────────────────────────────────────
 function setSyncStatus(st) {
@@ -1898,6 +1926,7 @@ function getFiltered() {
     return true;
   });
 
+  fs = sortStaff(fs, tt);
   return {staff:fs,types:tt};
 }
 
@@ -1908,7 +1937,14 @@ function renderMatrix() {
   const body=document.getElementById('matrix-body');
   const cats=[...new Set(tt.map(t=>t.cat))];
 
-  let headHtml='<tr><th rowspan="2" style="min-width:160px;text-align:left;padding-left:8px">Staff Member</th><th rowspan="2" style="min-width:55px">Area</th><th rowspan="2" style="min-width:55px">Shift</th>';
+  const si = (col) => sortState.col===col ? (sortState.dir==='asc'?' ▲':' ▼') : '';
+  const sh = (col,label,style='') => `<th onclick="setSortCol('${col}')" style="cursor:pointer;${style}">${label}${si(col)}</th>`;
+  let headHtml=`<tr>${sh('name','Staff Member','min-width:160px;text-align:left;padding-left:8px')} rowspan="2"`;
+  // Fix: build properly
+  headHtml = '<tr>'
+    + `<th onclick="setSortCol('name')" rowspan="2" style="cursor:pointer;min-width:160px;text-align:left;padding-left:8px">Name${si('name')}</th>`
+    + `<th onclick="setSortCol('area')" rowspan="2" style="cursor:pointer;min-width:55px">Area${si('area')}</th>`
+    + `<th onclick="setSortCol('shift')" rowspan="2" style="cursor:pointer;min-width:55px">Shift${si('shift')}</th>`;
   cats.forEach(cat=>{
     const count=tt.filter(t=>t.cat===cat).length;
     headHtml+=`<th colspan="${count}" class="cat-header">${cat}</th>`;
@@ -1917,7 +1953,8 @@ function renderMatrix() {
   cats.forEach(cat=>{
     tt.filter(t=>t.cat===cat).forEach(t=>{
       const mand=t.mandatory?'*':'';
-      headHtml+=`<th title="${t.name}${t.expiry_months?(' — retrain '+t.expiry_months+'m'):''}" style="min-width:52px;max-width:52px;font-size:9px">${t.short}${mand}</th>`;
+      const active=sortState.col===t.id?'background:#0a5fa0;':''
+      headHtml+=`<th onclick="setSortCol('${t.id}')" title="${t.name}${t.expiry_months?(' — retrain '+t.expiry_months+'m'):''}" style="cursor:pointer;min-width:52px;max-width:52px;font-size:9px;${active}">${t.short}${mand}${si(t.id)}</th>`;
     });
   });
   headHtml+='</tr>';
