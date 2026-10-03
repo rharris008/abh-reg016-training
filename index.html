@@ -123,13 +123,14 @@
   .form-card label { display: block; font-size: 12px; font-weight: 600; color: #444; margin-bottom: 3px; }
   .form-card input, .form-card select { width: 100%; padding: 7px 10px; border: 1px solid var(--mdgrey); border-radius: 4px; font-size: 12px; font-family: Arial, sans-serif; }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
 
 <div class="header">
   <div>
     <div class="header-title">REG-016 Employee Training Matrix</div>
-    <div class="header-sub">ABH Noble Beverages &mdash; Erskine Park &nbsp;|&nbsp; WFR-integrated &nbsp;|&nbsp; Version 1.0 DRAFT &nbsp;|&nbsp; 02/10/2026</div>
+    <div class="header-sub">ABH Noble Beverages &mdash; Erskine Park &nbsp;|&nbsp; WFR Staff + Supabase Records &nbsp;|&nbsp; Version 3.0 &nbsp;|&nbsp; 03/10/2026</div>
   </div>
   <div class="header-logo">Australian Beverage Holdings<br>INTERNAL &mdash; NOT FOR DISTRIBUTION</div>
 </div>
@@ -180,7 +181,7 @@
   <div class="kpi"><div class="kpi-dot amber"></div><strong id="kpi-due">--</strong>&nbsp;Due within 90 days</div>
   <div class="kpi"><div class="kpi-dot red"></div><strong id="kpi-expired">--</strong>&nbsp;Expired</div>
   <div class="kpi"><div class="kpi-dot none"></div><strong id="kpi-missing">--</strong>&nbsp;Not recorded</div>
-  <div class="kpi" style="margin-left:auto;font-size:11px;color:#666;">Last updated: 02/10/2026 &nbsp;|&nbsp; <span id="kpi-staff">--</span> staff shown</div>
+  <div class="kpi" style="margin-left:auto;font-size:11px;color:#666;">Last updated: 03/10/2026 &nbsp;|&nbsp; <span id="kpi-staff">--</span> staff shown &nbsp;|&nbsp; <span id="sync-badge" style="font-weight:700;color:#ccc;">● Connecting…</span></div>
 </div>
 
 <!-- MATRIX VIEW -->
@@ -278,7 +279,7 @@
   </div>
 </div>
 
-<div class="footer">ABH Noble Beverages &mdash; REG-016 Training Matrix &nbsp;|&nbsp; INTERNAL &mdash; NOT FOR DISTRIBUTION &nbsp;|&nbsp; Generated: 02/10/2026</div>
+<div class="footer">ABH Noble Beverages &mdash; REG-016 Training Matrix &nbsp;|&nbsp; INTERNAL &mdash; NOT FOR DISTRIBUTION &nbsp;|&nbsp; Generated: 03/10/2026</div>
 
 <script>
 // ─── Data ────────────────────────────────────────────────────────────────────
@@ -1261,9 +1262,19 @@ const SAMPLE_RECORDS = [
   }
 ];
 
+// ─── Supabase ─────────────────────────────────────────────────────────────────
+const SUPA_URL = 'https://yxaebxkkclbjezffmerw.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4YWVieGtrY2xiamV6ZmZtZXJ3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2MTAwMTEsImV4cCI6MjA5MDE4NjAxMX0.b8oUcdqHAgt03yiAt5LYew1JODx4o_HDjVEdb3pE1Ks';
+let supabase = null;
+let supaReady = false;
+try {
+  supabase = window.supabase ? window.supabase.createClient(SUPA_URL, SUPA_KEY) : null;
+} catch(e) { supabase = null; }
+
 // ─── State ───────────────────────────────────────────────────────────────────
-let records = JSON.parse(localStorage.getItem('abh_training_records') || 'null') || [...SAMPLE_RECORDS];
-let staff = JSON.parse(localStorage.getItem('abh_training_staff') || 'null') || [...STAFF_DATA];
+let records = [...SAMPLE_RECORDS];
+let staff = [...STAFF_DATA];
+let syncStatus = 'loading';
 let currentModal = {staff_id: null, training_id: null};
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -1315,8 +1326,87 @@ function fmtDate(d) {
 }
 
 function saveState() {
-  localStorage.setItem('abh_training_records', JSON.stringify(records));
-  localStorage.setItem('abh_training_staff', JSON.stringify(staff));
+  try { localStorage.setItem('abh_training_records', JSON.stringify(records)); } catch(e) {}
+  try { localStorage.setItem('abh_training_staff', JSON.stringify(staff)); } catch(e) {}
+}
+
+async function saveRecord(rec) {
+  saveState();
+  if (!supaReady) return;
+  try {
+    await supabase.from('training_records').upsert(
+      {staff_id: rec.staff_id, training_id: rec.training_id,
+       completed: rec.completed, expiry: rec.expiry || null,
+       doc_url: rec.doc_url || null, notes: rec.notes || null,
+       updated_at: new Date().toISOString()},
+      {onConflict: 'staff_id,training_id'}
+    );
+    setSyncStatus('live');
+  } catch(e) { setSyncStatus('local'); }
+}
+
+async function saveTempStaffRecord(s) {
+  saveState();
+  if (!supaReady) return;
+  try {
+    await supabase.from('temp_staff').upsert(
+      {id: s.id, first_name: s.first, last_name: s.last,
+       shift: s.shift, area: s.area, employer: s.employer,
+       start_date: s.start || null, notes: s.notes || null, active: true},
+      {onConflict: 'id'}
+    );
+    setSyncStatus('live');
+  } catch(e) { setSyncStatus('local'); }
+}
+
+function setSyncStatus(st) {
+  syncStatus = st;
+  const el = document.getElementById('sync-badge');
+  if (!el) return;
+  if (st === 'live') { el.textContent = '● Live (Supabase)'; el.style.color = '#27AE60'; }
+  else if (st === 'local') { el.textContent = '● Local only'; el.style.color = '#E67E22'; }
+  else { el.textContent = '● Connecting…'; el.style.color = '#ccc'; }
+}
+
+async function initSupabase() {
+  if (!supabase) { setSyncStatus('local'); return; }
+  try {
+    const {data: recs, error: e1} = await supabase.from('training_records').select('*');
+    if (!e1 && recs && recs.length > 0) {
+      const supaRecs = recs.map(r => ({
+        staff_id: r.staff_id, training_id: r.training_id,
+        completed: r.completed, expiry: r.expiry || null,
+        doc_url: r.doc_url || '', notes: r.notes || ''
+      }));
+      records = supaRecs;
+      supaReady = true;
+    }
+    const {data: temps, error: e2} = await supabase.from('temp_staff').select('*').eq('active', true);
+    if (!e2 && temps) {
+      const supaTemps = temps.map(t => ({
+        id: t.id, first: t.first_name, last: t.last_name,
+        shift: t.shift || 'Day', area: t.area || 'Production',
+        employer: t.employer || 'Agency', start: t.start_date || '',
+        type: 'temp'
+      }));
+      staff = [...STAFF_DATA, ...supaTemps];
+      supaReady = true;
+    }
+    if (supaReady) { setSyncStatus('live'); }
+    else {
+      const localRecs = localStorage.getItem('abh_training_records');
+      if (localRecs) records = JSON.parse(localRecs);
+      const localStaff = localStorage.getItem('abh_training_staff');
+      if (localStaff) staff = JSON.parse(localStaff);
+      setSyncStatus('local');
+    }
+  } catch(e) {
+    const localRecs = localStorage.getItem('abh_training_records');
+    if (localRecs) { try { records = JSON.parse(localRecs); } catch(_){} }
+    setSyncStatus('local');
+  }
+  renderMatrix();
+  renderGaps();
 }
 
 // ─── Filter logic ─────────────────────────────────────────────────────────────
@@ -1529,7 +1619,7 @@ function saveTraining() {
   records = records.filter(r => !(r.staff_id === currentModal.staff_id && r.training_id === currentModal.training_id));
   records.push({...currentModal, completed, expiry, doc_url, notes});
 
-  saveState();
+  saveRecord({...currentModal, completed, expiry, doc_url, notes});
   closeModal();
   renderMatrix();
   renderGaps();
@@ -1552,7 +1642,7 @@ function addTempStaff() {
   };
 
   staff.push(newStaff);
-  saveState();
+  saveTempStaffRecord(newStaff);
 
   document.getElementById('add-first').value = '';
   document.getElementById('add-last').value = '';
@@ -1608,6 +1698,7 @@ function exportPrint() { window.print(); }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 showView('matrix');
+initSupabase();
 </script>
 </body>
 </html>
