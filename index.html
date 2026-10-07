@@ -166,6 +166,7 @@
   <input type="text" id="filter-search" placeholder="Search name..." oninput="applyFilters()" style="width:140px">
   <button class="btn btn-export" onclick="exportCSV()">Export CSV</button>
   <button class="btn btn-primary" onclick="window.print()">Print</button>
+  <button class="btn btn-green" onclick="showAddTopicModal()" style="margin-left:auto">+ Add Training Topic</button>
 </div>
 
 <div class="kpi-bar" id="kpi-bar">
@@ -247,6 +248,43 @@
     <div class="modal-buttons">
       <button class="btn" style="background:#eee;color:#333" onclick="closeModal()">Cancel</button>
       <button class="btn btn-green" onclick="saveTraining()">Save Record</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-topic">
+  <div class="modal">
+    <h3>Add Training Topic</h3>
+    <label>Topic Name *</label><input id="topic-name" placeholder="e.g. Chemical Handling Awareness">
+    <label>Short Label (column header, max 12 chars) *</label><input id="topic-short" maxlength="12" placeholder="e.g. Chem Handle">
+    <label>Category</label>
+    <select id="topic-cat">
+      <option value="Compliance">Compliance</option>
+      <option value="Food Safety">Food Safety</option>
+      <option value="Machine Operator">Machine Operator</option>
+      <option value="Warehouse">Warehouse</option>
+      <option value="Maintenance">Maintenance</option>
+      <option value="Licence">Licence</option>
+      <option value="Leadership">Leadership</option>
+      <option value="Custom">Custom</option>
+    </select>
+    <label>Expiry (months, leave blank if no expiry)</label><input id="topic-expiry" type="number" min="1" max="120" placeholder="e.g. 12">
+    <label>Applicable To</label>
+    <select id="topic-applicable">
+      <option value="All">All Staff</option>
+      <option value="Production">Production</option>
+      <option value="Warehouse">Warehouse</option>
+      <option value="Quality">Quality</option>
+      <option value="Maintenance">Maintenance</option>
+      <option value="Administration">Administration</option>
+    </select>
+    <label style="display:flex;align-items:center;gap:8px;margin-top:12px">
+      <input id="topic-mandatory" type="checkbox" style="width:auto">
+      Mark as Mandatory
+    </label>
+    <div class="modal-buttons">
+      <button class="btn" style="background:#eee;color:#333" onclick="closeTopicModal()">Cancel</button>
+      <button class="btn btn-green" onclick="saveTrainingTopic()">Add Topic</button>
     </div>
   </div>
 </div>
@@ -1886,6 +1924,25 @@ async function initSupabase() {
       const tempRows = (!e3 && temps && temps.length>0) ? temps.map(t=>{return{id:t.id,first:t.first_name,last:t.last_name,shift:t.shift||'Day',area:t.area||'Production',employer:t.employer||'Agency',start:t.start_date||'',type:'temp'}}) : [];
       staff = [...WFR_STAFF,...tempRows];
     }
+    // Load custom training topics and merge into TRAINING_TYPES
+    const {data:customTypes,error:e4} = await supabase.from('custom_training_types').select('*').eq('active',true);
+    if (!e4 && customTypes && customTypes.length>0) {
+      customTypes.forEach(ct=>{
+        if (!TRAINING_TYPES.find(t=>t.id===ct.id)) {
+          TRAINING_TYPES.push({
+            id: ct.id,
+            name: ct.name,
+            cat: ct.cat||'Custom',
+            expiry_months: ct.expiry_months||null,
+            mandatory: ct.mandatory||false,
+            short: ct.short,
+            applicable: ct.applicable||['All'],
+            custom: true
+          });
+        }
+      });
+    }
+
     if (supaReady) { setSyncStatus('live'); }
     else {
       const lr=localStorage.getItem('abh_tm_records'); if(lr){try{records=JSON.parse(lr)}catch(_){}}
@@ -2145,6 +2202,47 @@ function exportCSV() {
   a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
   a.download='ABH_Training_Matrix_'+new Date().toISOString().slice(0,10)+'.csv';
   a.click();
+}
+
+// ─── Add training topic ───────────────────────────────────────────────────────
+function showAddTopicModal() {
+  document.getElementById('topic-name').value='';
+  document.getElementById('topic-short').value='';
+  document.getElementById('topic-cat').value='Compliance';
+  document.getElementById('topic-expiry').value='';
+  document.getElementById('topic-applicable').value='All';
+  document.getElementById('topic-mandatory').checked=false;
+  document.getElementById('modal-topic').classList.add('open');
+}
+
+function closeTopicModal() {
+  document.getElementById('modal-topic').classList.remove('open');
+}
+
+async function saveTrainingTopic() {
+  const name=document.getElementById('topic-name').value.trim();
+  const short=document.getElementById('topic-short').value.trim();
+  if (!name||!short) { alert('Topic Name and Short Label are required.'); return; }
+  const cat=document.getElementById('topic-cat').value;
+  const expiryRaw=document.getElementById('topic-expiry').value;
+  const expiry_months=expiryRaw ? parseInt(expiryRaw,10) : null;
+  const applicableVal=document.getElementById('topic-applicable').value;
+  const applicable=applicableVal==='All' ? ['All'] : ['All',applicableVal];
+  const mandatory=document.getElementById('topic-mandatory').checked;
+  const id='ct_'+Date.now();
+
+  const newType={id,name,cat,expiry_months,mandatory,short,applicable,custom:true};
+  TRAINING_TYPES.push(newType);
+
+  if (supabase && supaReady) {
+    await supabase.from('custom_training_types').insert([{
+      id, name, short, cat, expiry_months, mandatory, applicable, active:true
+    }]);
+  }
+  closeTopicModal();
+  renderMatrix();
+  renderTypes();
+  alert('Training topic "'+name+'" added. Column now visible in the matrix.');
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
